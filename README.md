@@ -9,3 +9,12 @@ This script exports demangled function names from IDA/IDA Pro for importing into
 
 ### ghidra_function_name_import.py
 Imports function names from a file containing two columns of function names and addresses. Function names have spaces and brackets and there contents removed. Addresses are in hex format. For very large files the script may need to be run multiple times.
+
+### graph_class_hierarchy.py
+Given some parent classes, creates a graph with said classes and all child classes. Similar to Ghidras `Data Type Manager -> Display as Graph` but iterates in the opposite direction and can take multiple nodes as starting points. 
+Must to be called from the command lines as I haven't figured out a way to get the currently selected types from the `Data Type Manager`
+
+```python
+from graph_class_hierarchy import class_hierarchy
+class_hierarchy(["class", "class2"])
+```
