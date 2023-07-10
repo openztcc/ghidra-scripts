@@ -8,7 +8,8 @@ A collection of scripts to aid analysis of Zoo Tycoon. All Ghidra script require
 This script exports demangled function names from IDA/IDA Pro for importing into Ghidra. Based on [this script](https://gist.github.com/hax0kartik/e358ce447a4537bcef534aa8de84817c) which does not demangle before export.
 
 ### ghidra_function_name_import.py
-Imports function names from a file containing two columns of function names and addresses. Function names have spaces and brackets and there contents removed. Addresses are in hex format. For very large files the script may need to be run multiple times.
+Imports function names and signatures from a file containing two columns of function names and addresses. Function names have spaces and brackets and there contents removed. Addresses are in hex format. Functions signatures are added as plate comments.
+For very large files the script may need to be run multiple times.
 
 ### graph_class_hierarchy.py
 Given some parent classes, creates a graph with said classes and all child classes. Similar to Ghidras `Data Type Manager -> Display as Graph` but iterates in the opposite direction and can take multiple nodes as starting points. 
