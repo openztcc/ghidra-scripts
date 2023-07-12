@@ -1,6 +1,6 @@
 # Ghidra scripts
 
-A collection of scripts to aid analysis of Zoo Tycoon. All Ghidra script require [Ghidrathon](https://github.com/mandiant/Ghidrathon)
+A collection of scripts to aid analysis of Zoo Tycoon. All Python scripts require [Ghidrathon](https://github.com/mandiant/Ghidrathon)
 
 ## Scripts
 
@@ -19,3 +19,6 @@ Must to be called from the command lines as I haven't figured out a way to get t
 from graph_class_hierarchy import class_hierarchy
 class_hierarchy(["class", "class2"])
 ```
+
+### ClassChooser.java (WIP)
+Brings up a list of all classes from the IDA export and allows the user to rename the currently selected class in the 'Data Type Manager' to one from the dialog
