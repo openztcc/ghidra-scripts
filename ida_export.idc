@@ -31,7 +31,7 @@ static FuncDump(f, start)
             teststr = sprintf("sub_%X", ea);
             if( teststr != str )
             {
-                fprintf(f, "%s 0x%X\n", str, ea);
+                fprintf(f, "%s, %s, 0x%X\n", mangled_str, str, ea);
             }
             //Message("%s, 0x%d, 0x%x, 0x%x, 0x%x, %d\n", str, count, ea, end, end-ea, end-ea   );
         }
