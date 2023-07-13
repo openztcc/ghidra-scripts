@@ -8,6 +8,8 @@ static FuncDump(f, start)
 
     ea = start;
 
+    fprintf(f, "mangled_name;unmangled_name;address\n");
+
     while( ea != BADADDR )
     {
         mangled_str = GetFunctionName(ea);
@@ -31,7 +33,7 @@ static FuncDump(f, start)
             teststr = sprintf("sub_%X", ea);
             if( teststr != str )
             {
-                fprintf(f, "%s, %s, 0x%X\n", mangled_str, str, ea);
+                fprintf(f, "%s; %s; 0x%X\n", mangled_str, str, ea);
             }
             //Message("%s, 0x%d, 0x%x, 0x%x, 0x%x, %d\n", str, count, ea, end, end-ea, end-ea   );
         }
