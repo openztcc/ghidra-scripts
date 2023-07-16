@@ -21,4 +21,4 @@ class_hierarchy(["class", "class2"])
 ```
 
 ### ClassChooser.java (WIP)
-Brings up a list of all classes from the IDA export and allows the user to rename the currently selected class in the 'Data Type Manager' to one from the dialog
+Brings up a list of all classes from the IDA export and allows the user to rename the currently in scope class in the decompiler. The script requires the [gson library](https://repo1.maven.org/maven2/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar), place it in ~/ghidra-scripts/ to make it available to ghidra.
