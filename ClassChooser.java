@@ -56,32 +56,7 @@ public class ClassChooser extends GhidraScript {
 			OkDialog.showError("Error", "Function " + currentFunction.getName() + " is not a method of a class.");
 			return;
 		}
-		// SymbolTable symbolTable = currentProgram.getSymbolTable();
-		// Namespace namespace = currentFunction.getParentNamespace();
-		// println("Namespace: " + namespace.getName());
 
-		// Symbol[] symbols = symbolTable.getSymbols(currentFunction.getEntryPoint());
-		// for (Symbol symbol : symbols) {
-		// 	println(symbol.getName());
-		// }
-
-		// DataTypeManager dataTypeManager = currentProgram.getDataTypeManager();
-
-		// try {
-        //     DataType[] selectedTypes = askDataTypeChooser("Select Types", "Select types to process:");
-        //     if (selectedTypes == null) {
-        //         return; // User cancelled the selection
-        //     }
-
-        //     println("Selected Types:");
-        //     for (DataType selectedType : selectedTypes) {
-        //         println(selectedType.getPathName());
-        //     }
-        // } catch (CancelledException e) {
-        //     // User cancelled the selection
-        // }
-
-		// TableChooserExecutor executor = null;
 		TableChooserExecutor executor = createTableExecutor(parentSymbol);
 
 		tableDialog = createTableChooserDialog("Rename " + parentSymbol.getName(), executor);
@@ -89,13 +64,10 @@ public class ClassChooser extends GhidraScript {
 		tableDialog.show();
 		tableDialog.setMessage("Parsing...");
 
-
-		// addClass(tableDialog, "0x1000", "This is a test");
-
-		tableDialog.setMessage("Finished!");
 		MethodParser ida_export = new MethodParser();
 		ida_export.parse();
 
+		tableDialog.setMessage("Finished!");
 		Map<String, ClassStatus> classStatuses = ida_export.getClassStatuses();
 
 		for (Map.Entry<String, ClassStatus> entry : classStatuses.entrySet()) {
@@ -185,39 +157,11 @@ public class ClassChooser extends GhidraScript {
 				println("Renaming class " + classSymbol.getName() + " to " + className);
 				renameClass(classSymbol.getName(), className);
 
-				return false; // don't remove row from display table
+				return false;
 			}
 		};
 		return executor;
 	}
-
-	// class ClassRenamerExecutor extends TableChooserExecutor {
-	// 	Symbol classSymbol;
-
-	// 	ClassRenamerExecutor(Symbol classSymbol) {
-	// 		this.classSymbol = classSymbol;
-	// 	}
-
-	// 	// @Override
-	// 	public String getButtonName() {
-	// 		return "Create Structure";
-	// 	}
-
-	// 	// @Override
-	// 	public boolean execute(AddressableRowObject rowObject) {
-	// 		ClassForImport ZooClass = (ClassForImport) rowObject;
-
-	// 		String className = ZooClass.getClassName();
-	// 		Address entry = ZooClass.getAddress();
-
-	// 		println("Class address: " + entry);
-	// 		println("Class name: " + className);
-
-	// 		println("Renaming class " + classSymbol.getName() + " to " + className);
-
-	// 		return false; // don't remove row from display table
-	// 	}
-	// }
 
 	private void addClass(TableChooserDialog tableChooserDialog, String address, String className, ClassStatus status) {
 		tableChooserDialog.add(new ClassForImport(address, className, status));
