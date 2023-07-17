@@ -28,6 +28,7 @@ import ghidra.util.exception.InvalidInputException;
 
 import ghidra.program.model.data.DataType;
 import ghidra.program.model.data.DataTypeManager;
+import ghidra.program.model.data.StructureDataType;
 import ghidra.program.model.symbol.Symbol;
 import ghidra.program.model.symbol.Namespace;
 import ghidra.program.model.symbol.SymbolTable;
@@ -35,11 +36,15 @@ import ghidra.program.model.symbol.SymbolIterator;
 import ghidra.program.model.symbol.SourceType;
 import ghidra.program.model.symbol.SymbolType;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.data.GenericCallingConvention;
+import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.lang.PrototypeModel;
 
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.InvalidNameException;
 
 import docking.widgets.OkDialog;
+import docking.widgets.OptionDialog;
 
 
 public class MethodChooser extends GhidraScript {
@@ -50,13 +55,18 @@ public class MethodChooser extends GhidraScript {
 		Function currentFunction = getFunctionContaining(currentAddress);
 		Symbol currentFunctionSymbol = currentFunction.getSymbol();
 		Symbol parentSymbol = currentFunctionSymbol.getParentSymbol();
+		String parentSymbolName;
 		if (parentSymbol.getSymbolType() != SymbolType.CLASS) {
-			OkDialog.showError("Error", "Function " + currentFunction.getName() + " is not a method of a class.");
-			return;
+			// OkDialog.showError("Error", "Function " + currentFunction.getName() + " is not a method of a class.");
+			// return;
+			parentSymbolName = "";
+		} else {
+			parentSymbolName = parentSymbol.getName();
+			// println(getDataTypes(parentSymbolName)[0].getCategoryPath().toString());
 		}
-		TableChooserExecutor executor = createTableExecutor(parentSymbol);
+		TableChooserExecutor executor = createTableExecutor(currentFunction);
 
-		tableDialog = createTableChooserDialog("Rename " + parentSymbol.getName(), executor);
+		tableDialog = createTableChooserDialog("Rename " + currentFunctionSymbol.getName(), executor);
 		configureTableColumns(tableDialog);
 		tableDialog.show();
 		tableDialog.setMessage("Parsing...");
@@ -66,7 +76,7 @@ public class MethodChooser extends GhidraScript {
 
 		Map<String, Set<String>> classMethodMaps = ida_export.getClassMethodsMap();
 
-		Set<String> methods = classMethodMaps.get(parentSymbol.getName());
+		Set<String> methods = classMethodMaps.get(parentSymbolName);
 		if (methods != null) {
 			for (String methodName : methods) {
 				int bracketIndex = methodName.indexOf('(');
@@ -75,7 +85,7 @@ public class MethodChooser extends GhidraScript {
 					tableDialog.add(new MethodForImport("0x0", methodName, new String[0]));
 					continue;
 				} 
-				println(methodName);
+				// println(methodName);
 				String trimmedMethodName = methodName.substring(0, bracketIndex);
 				String params = methodName.substring(bracketIndex + 1, methodName.indexOf(')'));
 				tableDialog.add(new MethodForImport("0x0", trimmedMethodName, params));
@@ -150,7 +160,7 @@ public class MethodChooser extends GhidraScript {
 	 * @return the executor
 	 */
 	@SuppressWarnings("unused")
-	private TableChooserExecutor createTableExecutor(Symbol classSymbol) {
+	private TableChooserExecutor createTableExecutor(Function function) {
 
 		TableChooserExecutor executor = new TableChooserExecutor() {
 
@@ -168,8 +178,9 @@ public class MethodChooser extends GhidraScript {
 				Address entry = zooMethod.getAddress();
 				String paramTypes = zooMethod.getParamTypesAsString();
 
+				println("Renaming method " + function.getName() + " to " + methodName);
 
-
+				renameMethod(function, methodName, zooMethod.getParamTypes());
 				// println("Renaming class " + classSymbol.getName() + " to " + className);
 				// renameClass(classSymbol.getName(), className);
 
@@ -247,7 +258,7 @@ public class MethodChooser extends GhidraScript {
 					FileWriter methodLogFileWriter = new FileWriter(methodLogFile);
 					while (scanner.hasNextLine()) {
 						String line = scanner.nextLine();
-						println(line);
+						// println(line);
 						String[] parts = line.split(";");
 
 						if (parts.length >= 3) {
@@ -258,11 +269,11 @@ public class MethodChooser extends GhidraScript {
 							}
 							String address = parts[2].trim();
 
-							println(methodSignature);
+							// println(methodSignature);
 							String methodName = extractMethodName(methodSignature);
-							println(methodName);
+							// println(methodName);
 							String className = extractClassName(methodSignature);
-							println(className);
+							// println(className);
 							classMethodsMap.computeIfAbsent(className, k -> new HashSet<>()).add(methodName);
 							methodLogFileWriter.write(mangledName + " " + className + " " + methodName + " " + methodSignature + " " + address + "\n");
 
@@ -409,5 +420,115 @@ public class MethodChooser extends GhidraScript {
 
 			println("Renamed class " + oldClassName + " to " + newClassName);
 		}
+	}
+
+	public void renameMethod(Function oldFunction, String newFunctionName, String[] newFunctionArgs) {
+		println("Renaming method " + oldFunction.getName() + " to " + newFunctionName + " with args " + Arrays.toString(newFunctionArgs));
+		int numArgs = newFunctionArgs.length;
+		boolean thisFlag = false;
+		if (oldFunction.getCallingConventionName().equals("__thiscall")) {
+			numArgs++;
+			thisFlag = true;
+		} 
+		if (oldFunction.getParameterCount() != numArgs) {
+			OkDialog.showError("Error", "Function " + oldFunction.getName() + " has " + oldFunction.getParameterCount() + " arguments, but " + numArgs + " were provided");
+			return;
+		}
+		start();
+		DataType[] paramDataTypes = new DataType[numArgs];
+		try {
+			oldFunction.setName(newFunctionName, SourceType.USER_DEFINED);
+			int indexOffset = 0;
+			if (thisFlag) {
+				indexOffset = 1;
+				paramDataTypes[0] = oldFunction.getParameter(0).getDataType();
+			}
+			for (int i = 0; i < numArgs-1; i++) {
+				paramDataTypes[i] = getDataTypeFromParam(oldFunction.getParameter(i + indexOffset).getDataType(), newFunctionArgs[i]);
+
+				if (paramDataTypes[i] == null) {
+					paramDataTypes[i] = getOrCreateDataType(newFunctionArgs[i]);
+					println("Error getting data type from param " + newFunctionArgs[i]);
+					end(false);
+					return;
+				}
+				retypeFunctionArg(oldFunction, i + indexOffset, paramDataTypes[i]);
+				// oldFunction.getParameter(i).setDataType(paramDataTypes[i], SourceType.USER_DEFINED);
+				// paramDataTypes[i] = getDataTypes(newFunctionArgs[i])[0];
+				// oldFunction.getParameter(i).setName(newFunctionArgs[i], SourceType.USER_DEFINED);
+			}
+		} catch (Exception e) {
+			println(e.getMessage());
+			e.printStackTrace();
+			end(false);
+		}
+		end(true);
+	}
+
+	public void retypeFunctionArg(Function function, int argIndex, DataType newDataType) throws ghidra.util.exception.InvalidInputException {
+		println("Function args " + function.getParameterCount() + " " + argIndex + " " + newDataType.getName());
+		try {
+			function.getParameters()[argIndex].setDataType(newDataType, SourceType.USER_DEFINED);
+		} catch (Exception e) {
+			// if (function.hasCustomVariableStorage()) {
+			// 	throw e;
+			// }
+			println("Retyping function " + function.getName() + " to use custom variable storage");
+			function.setCustomVariableStorage(true);
+			function.getParameters()[argIndex].setDataType(newDataType, SourceType.IMPORTED);
+		}
+	}
+
+	public String mapDataTypes(String dataTypeString) {
+		return dataTypeString.replaceAll("unsigned ", "u");
+	}
+
+	public DataType getOrCreateDataType(String dataTypeString) {
+		DataType[] dataTypes = getDataTypes(mapDataTypes(dataTypeString));
+		DataTypeManager dataTypeManager = currentProgram.getDataTypeManager();
+
+		if (dataTypes.length == 0) {
+			println("Creating data type ph_" + dataTypeString);
+			StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"), "ph_" + dataTypeString, 0);
+			dataTypeManager.addDataType(structure, DataTypeConflictHandler.REPLACE_HANDLER);
+			// return createDataType(mapDataTypes(dataTypeString));
+			return null; //return structure
+		} else {
+			return dataTypes[0];
+		}
+	}
+
+	public DataType getDataTypeFromParam(DataType oldDataType, String paramName) {
+		println("Getting data type from param " + paramName);
+		DataType[] dataTypes = getDataTypes(mapDataTypes(paramName));
+		if (dataTypes.length >= 1) {
+			if (oldDataType == dataTypes[0]) {
+				return dataTypes[0];
+			} else {
+				switch (OptionDialog.showYesNoCancelDialog(null, "Confirm", oldDataType.getName() + " will be changed to " + dataTypes[0].getName())) {
+					case 0:
+						println("Cancelled");
+						return null;
+					case 1:
+						println("Yes");
+						return dataTypes[0];
+					case 2:
+						println("No");
+						return oldDataType;
+					default:
+						return null;
+				}
+
+			}
+		} else {
+			return null;
+		}
+		// Parameter[] params = function.getParameters();
+		// for (Parameter param : params) {
+		// 	if (param.getName().equals(paramName)) {
+		// 		return param.getDataType();
+		// 	}
+		// }
+		// return null;
 	}
 }

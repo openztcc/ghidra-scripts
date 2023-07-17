@@ -21,4 +21,8 @@ class_hierarchy(["class", "class2"])
 ```
 
 ### ClassChooser.java (WIP)
-Brings up a list of all classes from the IDA export and allows the user to rename the currently in scope class in the decompiler. The script requires the [gson library](https://repo1.maven.org/maven2/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar), place it in ~/ghidra-scripts/ to make it available to ghidra.
+Brings up a list of all classes from the IDA export and allows the user to rename the currently in scope class in the decompiler, it also renames any placeholder classes. The script requires the [gson library](https://repo1.maven.org/maven2/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar), place it in ~/ghidra-scripts/ to make it available to ghidra.
+
+### MethodChooser.java (WIP)
+Brings up a list of methods for the current class in scope in the decompiler. The script will rename the current function and retype the parameters. If any parameters types aren't present yet, it will create placeholder types (ph_typename).
+The script requires the [gson library](https://repo1.maven.org/maven2/com/google/code/gson/gson/2.10.1/gson-2.10.1.jar), place it in ~/ghidra-scripts/ to make it available to ghidra.
