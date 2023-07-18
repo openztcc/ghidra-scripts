@@ -1,4 +1,4 @@
-// Some tests
+// Renames the class of the current function in the decompiler view
 //@category _NEW_
 
 import java.util.*;
@@ -37,9 +37,8 @@ import ghidra.program.model.symbol.SymbolType;
 import ghidra.program.model.listing.Function;
 
 import ghidra.util.exception.DuplicateNameException;
+import ghidra.program.model.data.DataTypeDependencyException;
 import ghidra.util.InvalidNameException;
-
-
 
 import docking.widgets.OkDialog;
 
@@ -75,15 +74,8 @@ public class ClassChooser extends GhidraScript {
 		}
 	}
 
-	/**
-	 * Builds the configurable columns for the TableDialog. More columns could be added.
-	 * 
-	 * @param tableChooserDialog the dialog 
-	 */
 	private void configureTableColumns(TableChooserDialog tableChooserDialog) {
 
-		// column to display the note at the address where a
-		// this is usually an error condition
 		StringColumnDisplay classNameColumn = new StringColumnDisplay() {
 			@Override
 			public String getColumnName() {
@@ -122,19 +114,6 @@ public class ClassChooser extends GhidraScript {
 		tableChooserDialog.addCustomColumn(classStatusColumn);
 	}
 
-	/**
-	 * Sample execution task Execution class called whenever the execute button
-	 * in the table is called. NOTE: the execute button is not setup, so this is
-	 * just and example
-	 * 
-	 * Useful if you are back tracking constants for malloc or calloc Runs
-	 * another script that will create a structure on the return variable of
-	 * calloc/malloc. It pulls a little trick when calling the CreateStructure
-	 * script by creating an artificial ScriptState. This is a useful technique
-	 * for other scripts as well.
-	 * 
-	 * @return the executor
-	 */
 	@SuppressWarnings("unused")
 	private TableChooserExecutor createTableExecutor(Symbol classSymbol) {
 
@@ -142,7 +121,7 @@ public class ClassChooser extends GhidraScript {
 
 			@Override
 			public String getButtonName() {
-				return "Create Structure";
+				return "Rename Class";
 			}
 
 			@Override
@@ -152,10 +131,10 @@ public class ClassChooser extends GhidraScript {
 				String className = ZooClass.getClassName();
 				Address entry = ZooClass.getAddress();
 
-
-
 				println("Renaming class " + classSymbol.getName() + " to " + className);
 				renameClass(classSymbol.getName(), className);
+
+				replacePlaceholders(className);
 
 				return false;
 			}
@@ -197,17 +176,17 @@ public class ClassChooser extends GhidraScript {
 	}
 
 	public enum ClassStatus {
+		PLACEHOLDER,
 		IMPORTED,
-		MATCHED,
 		ABSENT
 	}
 
 	public static String convertStatus(ClassStatus status) {
 		switch (status) {
+			case PLACEHOLDER:
+				return "Placeholder";
 			case IMPORTED:
 				return "Imported";
-			case MATCHED:
-				return "Matched";
 			case ABSENT:
 				return "Absent";
 			default:
@@ -230,9 +209,6 @@ public class ClassChooser extends GhidraScript {
 			File methodLogFile = new File(homePath + File.separator + "method_log.txt");
 			createOrReplaceFile(methodLogFile);
 
-			// println("Parsing importFile: " + homePath);
-
-			// Set<String> uniqueClasses = new HashSet<>();
 
 			try (Scanner scanner = new Scanner(importFile)) {
 				//Skip header
@@ -258,10 +234,10 @@ public class ClassChooser extends GhidraScript {
 
 							// uniqueClasses.add(className);
 							if (getDataTypes(className).length != 0) {
-								classStatuses.put(className, ClassStatus.MATCHED);
+								classStatuses.put(className, ClassStatus.IMPORTED);
 							} else {
 								if (getDataTypes("ph_" + className).length != 0) {
-									classStatuses.put(className, ClassStatus.IMPORTED);
+									classStatuses.put(className, ClassStatus.PLACEHOLDER);
 								} else {
 									classStatuses.put(className, ClassStatus.ABSENT);
 								}
@@ -282,8 +258,6 @@ public class ClassChooser extends GhidraScript {
 				e.printStackTrace();
 			}
 
-			// Print the unique classes
-			// println("Unique Classes:");
 			try {
 				FileWriter classLogFileWriter = new FileWriter(classLogFile);
 				for (Map.Entry<String, ClassStatus> entry : classStatuses.entrySet()) {
@@ -294,21 +268,6 @@ public class ClassChooser extends GhidraScript {
 					e.printStackTrace();
 			}
 
-			// Print the method signatures
-			// println("\nMethod Signatures:");
-			// for (Map.Entry<String, String> entry : methodSignatures.entrySet()) {
-			// 	String mangledName = entry.getKey();
-			// 	String methodSignature = entry.getValue();
-			// 	println(mangledName + " -> " + methodSignature);
-			// }
-
-			// Print the method addresses
-			// println("\nMethod Addresses:");
-			// for (Map.Entry<String, String> entry : methodAddresses.entrySet()) {
-			// 	String mangledName = entry.getKey();
-			// 	String address = entry.getValue();
-			// 	println(mangledName + " -> " + address);
-			// }
 		}
 
 		private static void createOrReplaceFile(File file) {
@@ -389,5 +348,23 @@ public class ClassChooser extends GhidraScript {
 
 			println("Renamed class " + oldClassName + " to " + newClassName);
 		}
+	}
+
+	public void replacePlaceholders(String className) {
+		DataType placeholder = getDataTypes("ph_" + className)[0];
+		DataType classDataType = getDataTypes(className)[0];
+		if (placeholder == null || classDataType == null) {
+			return;
+		}
+		DataTypeManager dataTypeManager = currentProgram.getDataTypeManager();
+		start();
+		try {
+			dataTypeManager.replaceDataType(placeholder, classDataType, true);
+		} catch (DataTypeDependencyException e) {
+			e.printStackTrace();
+			end(false);
+			return;
+		}
+		end(true);
 	}
 }

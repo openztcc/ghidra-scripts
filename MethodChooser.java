@@ -1,4 +1,4 @@
-// Some tests
+// Renames and retypes the function in the decompiler view
 //@category _NEW_
 
 import java.util.*;
@@ -68,7 +68,11 @@ public class MethodChooser extends GhidraScript {
 		}
 		TableChooserExecutor executor = createTableExecutor(currentFunction);
 
-		tableDialog = createTableChooserDialog("Rename " + currentFunctionSymbol.getName(), executor);
+		if (parentSymbolName != "") {
+			tableDialog = createTableChooserDialog("Rename " + parentSymbolName + "::" + currentFunctionSymbol.getName(), executor);
+		} else {
+			tableDialog = createTableChooserDialog("Rename " + currentFunctionSymbol.getName(), executor);
+		}
 		configureTableColumns(tableDialog);
 		tableDialog.show();
 		tableDialog.setMessage("Parsing...");
@@ -168,14 +172,13 @@ public class MethodChooser extends GhidraScript {
 
 			@Override
 			public String getButtonName() {
-				return "Create Structure";
+				return "Rename";
 			}
 
 			@Override
 			public boolean execute(AddressableRowObject rowObject) {
 				MethodForImport zooMethod = (MethodForImport) rowObject;
 
-				// String className = zooMethod.getClassName();
 				String methodName = zooMethod.getMethodName(); 
 				Address entry = zooMethod.getAddress();
 				String paramTypes = zooMethod.getParamTypesAsString();
@@ -183,10 +186,8 @@ public class MethodChooser extends GhidraScript {
 				println("Renaming method " + function.getName() + " to " + methodName);
 
 				renameMethod(function, methodName, zooMethod.getParamTypes());
-				// println("Renaming class " + classSymbol.getName() + " to " + className);
-				// renameClass(classSymbol.getName(), className);
 
-				return false; // don't remove row from display table
+				return false; 
 			}
 		};
 		return executor;
@@ -549,12 +550,4 @@ public class MethodChooser extends GhidraScript {
 		} else {
 			return null;
 		}
-		// Parameter[] params = function.getParameters();
-		// for (Parameter param : params) {
-		// 	if (param.getName().equals(paramName)) {
-		// 		return param.getDataType();
-		// 	}
-		// }
-		// return null;
-	}
 }
