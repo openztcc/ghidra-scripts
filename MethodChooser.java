@@ -38,7 +38,9 @@ import ghidra.program.model.symbol.SymbolType;
 import ghidra.program.model.listing.Function;
 import ghidra.program.model.data.GenericCallingConvention;
 import ghidra.program.model.data.CategoryPath;
+import ghidra.program.model.data.PointerDataType;
 import ghidra.program.model.lang.PrototypeModel;
+import ghidra.program.model.data.DataTypeConflictHandler;
 
 import ghidra.util.exception.DuplicateNameException;
 import ghidra.util.InvalidNameException;
@@ -263,7 +265,7 @@ public class MethodChooser extends GhidraScript {
 
 						if (parts.length >= 3) {
 							String mangledName = parts[0].trim();
-							String methodSignature = parts[1].trim().replaceAll("\\(\\(", "\\(").replaceAll("\\)\\)", "\\)");
+							String methodSignature = parts[1].trim().replaceAll("\\(\\(", "\\(").replaceAll("\\)\\)", "\\)").replaceAll("\\(const\\(", "\\(");
 							if (methodSignature.startsWith("std::") || methodSignature.startsWith("Metrowerks::")) {
 								continue;
 							}
@@ -448,9 +450,11 @@ public class MethodChooser extends GhidraScript {
 
 				if (paramDataTypes[i] == null) {
 					paramDataTypes[i] = getOrCreateDataType(newFunctionArgs[i]);
-					println("Error getting data type from param " + newFunctionArgs[i]);
-					end(false);
-					return;
+					if (paramDataTypes[i] == null) {
+						// println("Error getting data type from param " + newFunctionArgs[i]);
+						end(false);
+						return;
+					}
 				}
 				retypeFunctionArg(oldFunction, i + indexOffset, paramDataTypes[i]);
 				// oldFunction.getParameter(i).setDataType(paramDataTypes[i], SourceType.USER_DEFINED);
@@ -488,13 +492,35 @@ public class MethodChooser extends GhidraScript {
 		DataTypeManager dataTypeManager = currentProgram.getDataTypeManager();
 
 		if (dataTypes.length == 0) {
+			if (dataTypeString.endsWith(" *") || dataTypeString.endsWith(" &") || dataTypeString.endsWith("const &")) {
+				String baseType = replaceSuffix(dataTypeString, " *");
+				baseType = replaceSuffix(baseType, " &");
+				baseType = replaceSuffix(baseType, " const");
+				dataTypes = getDataTypes(mapDataTypes(baseType));
+				if (dataTypes.length == 0) {
+					println("Creating data type ph_" + baseType);
+					StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"), "ph_" + baseType, 0);
+					dataTypeManager.addDataType(structure, DataTypeConflictHandler.REPLACE_HANDLER);
+					return new PointerDataType(structure);
+				} else {
+					return new PointerDataType(dataTypes[0]);
+				}
+			}
 			println("Creating data type ph_" + dataTypeString);
 			StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"), "ph_" + dataTypeString, 0);
 			dataTypeManager.addDataType(structure, DataTypeConflictHandler.REPLACE_HANDLER);
 			// return createDataType(mapDataTypes(dataTypeString));
-			return null; //return structure
+			return structure;
 		} else {
 			return dataTypes[0];
+		}
+	}
+
+	public String replaceSuffix(String sourceString, String suffix) {
+		if (sourceString.endsWith(suffix)) {
+			return sourceString.substring(0, sourceString.length() - suffix.length());
+		} else {
+			return sourceString;
 		}
 	}
 
