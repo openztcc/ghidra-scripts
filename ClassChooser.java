@@ -319,7 +319,7 @@ public class ClassChooser extends GhidraScript {
 	public void renameClass(String oldClassName, String newClassName) {
 		Namespace ooNamespace = getNamespace(null, "OOAnalyzer");
 		DataType[] classDataTypes = getDataTypes(oldClassName);
-		DataType[] vtableDataTypes = getDataTypes(oldClassName + "::vtable_" + oldClassName.replaceFirst("^cls_0x", ""));
+		DataType[] vftableDataTypes = getDataTypes(oldClassName + "::vftable_" + oldClassName.replaceFirst("^cls_0x", ""));
 		List<Symbol> classSymbols = getSymbols(oldClassName, ooNamespace);
 		if (getDataTypes(newClassName).length != 0 || getSymbols(newClassName, null).size() != 0) {
 			OkDialog.showError("Error", "Class " + newClassName + " already exists");
@@ -327,17 +327,17 @@ public class ClassChooser extends GhidraScript {
 		} else if (classDataTypes.length == 0 || classSymbols.size() == 0) {
 			OkDialog.showError("Error", "Class " + oldClassName + " does not exist " + classDataTypes.length + " " + classSymbols.size());
 			return;
-		} else if (classDataTypes.length != 1 || vtableDataTypes.length > 1 || classSymbols.size() != 1) {
-			OkDialog.showError("Error", "Multiple classes with name " + oldClassName + " exist " + classDataTypes.length + " " + vtableDataTypes.length + " " + classSymbols.size());
+		} else if (classDataTypes.length != 1 || vftableDataTypes.length > 1 || classSymbols.size() != 1) {
+			OkDialog.showError("Error", "Multiple classes with name " + oldClassName + " exist " + classDataTypes.length + " " + vftableDataTypes.length + " " + classSymbols.size());
 			return;
 		} else {
 			start();
 			try {
 				DataType classDataType = classDataTypes[0];
 				classDataType.setName(newClassName);
-				if (vtableDataTypes.length == 1) {
-					DataType vtableDataType = vtableDataTypes[0];
-					vtableDataType.setName(newClassName + "::vtable");
+				if (vftableDataTypes.length == 1) {
+					DataType vtableDataType = vftableDataTypes[0];
+					vtableDataType.setName(newClassName + "::vftable");
 				}
 				classSymbols.get(0).setName(newClassName, SourceType.USER_DEFINED);
 			} catch (Exception e) {
