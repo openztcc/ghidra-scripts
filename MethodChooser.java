@@ -428,6 +428,9 @@ public class MethodChooser extends GhidraScript {
 	public void renameMethod(Function oldFunction, String newFunctionName, String[] newFunctionArgs) {
 		println("Renaming method " + oldFunction.getName() + " to " + newFunctionName + " with args " + Arrays.toString(newFunctionArgs));
 		int numArgs = newFunctionArgs.length;
+		if (numArgs == 1 && newFunctionArgs[0].equals("void")) {
+			numArgs = 0;
+		}
 		boolean thisFlag = false;
 		if (oldFunction.getCallingConventionName().equals("__thiscall")) {
 			numArgs++;
@@ -550,4 +553,5 @@ public class MethodChooser extends GhidraScript {
 		} else {
 			return null;
 		}
+	}
 }
