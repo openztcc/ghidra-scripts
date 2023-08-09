@@ -84,22 +84,26 @@ public class MethodChooser extends GhidraScript {
 		Map<String, Set<String>> classMethodMaps = ida_export.getClassMethodsMap();
 
 		Set<String> methods = classMethodMaps.get(parentSymbolName);
-		String[] namespaces = { "ZTUI", "ZTUI::animalinfo", "ZTUI::buya", "ZTUI::buyh", "ZTUI::buyobj",
-				"ZTUI::cbuildinginfo", "ZTUI::colorreplace", "ZTUI::credits", "ZTUI::developer",
-				"ZTUI::expansionselect", "ZTUI::filterinfo", "ZTUI::gameopts", "ZTUI::gamescrn", "ZTUI::general",
-				"ZTUI::guestinfo", "ZTUI::habitatinfo", "ZTUI::heliinfo", "ZTUI::help", "ZTUI::hirestaff",
-				"ZTUI::infoplaque", "ZTUI::keeperinfo", "ZTUI::main", "ZTUI::mapselect", "ZTUI::messagebox",
-				"ZTUI::multianimal", "ZTUI::multiguest", "ZTUI::multistaff", "ZTUI::ncbuildinginfo", "ZTUI::objective",
-				"ZTUI::rescon", "ZTUI::scenario", "ZTUI::showpanel", "ZTUI::staffinfo", "ZTUI::staffplaque",
-				"ZTUI::startup", "ZTUI::tankmodify", "ZTUI::terraform", "ZTUI::zooitems", "ZTUI::zoostatus" };
-		for (String namespace : namespaces) {
-			Set<String> methodsInNamespace = classMethodMaps.get(namespace);
-			if (methodsInNamespace != null) {
-				for (String methodName : methodsInNamespace) {
-					methods.add(namespace + ":" + methodName);
+		if (parentSymbolName == "") {
+			String[] namespaces = { "ZTUI", "ZTUI::animalinfo", "ZTUI::buya", "ZTUI::buyh", "ZTUI::buyobj",
+					"ZTUI::cbuildinginfo", "ZTUI::colorreplace", "ZTUI::credits", "ZTUI::developer",
+					"ZTUI::expansionselect", "ZTUI::filterinfo", "ZTUI::gameopts", "ZTUI::gamescrn", "ZTUI::general",
+					"ZTUI::guestinfo", "ZTUI::habitatinfo", "ZTUI::heliinfo", "ZTUI::help", "ZTUI::hirestaff",
+					"ZTUI::infoplaque", "ZTUI::keeperinfo", "ZTUI::main", "ZTUI::mapselect", "ZTUI::messagebox",
+					"ZTUI::multianimal", "ZTUI::multiguest", "ZTUI::multistaff", "ZTUI::ncbuildinginfo",
+					"ZTUI::objective",
+					"ZTUI::rescon", "ZTUI::scenario", "ZTUI::showpanel", "ZTUI::staffinfo", "ZTUI::staffplaque",
+					"ZTUI::startup", "ZTUI::tankmodify", "ZTUI::terraform", "ZTUI::zooitems", "ZTUI::zoostatus" };
+			for (String namespace : namespaces) {
+				Set<String> methodsInNamespace = classMethodMaps.get(namespace);
+				if (methodsInNamespace != null) {
+					for (String methodName : methodsInNamespace) {
+						methods.add(namespace + ":" + methodName);
+					}
 				}
 			}
 		}
+
 		if (methods != null) {
 			for (String methodName : methods) {
 				int bracketIndex = methodName.indexOf('(');
