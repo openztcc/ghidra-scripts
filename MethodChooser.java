@@ -48,7 +48,6 @@ import ghidra.util.InvalidNameException;
 import docking.widgets.OkDialog;
 import docking.widgets.OptionDialog;
 
-
 public class MethodChooser extends GhidraScript {
 	TableChooserDialog tableDialog;
 
@@ -59,7 +58,8 @@ public class MethodChooser extends GhidraScript {
 		Symbol parentSymbol = currentFunctionSymbol.getParentSymbol();
 		String parentSymbolName;
 		if (parentSymbol.getSymbolType() != SymbolType.CLASS) {
-			// OkDialog.showError("Error", "Function " + currentFunction.getName() + " is not a method of a class.");
+			// OkDialog.showError("Error", "Function " + currentFunction.getName() + " is
+			// not a method of a class.");
 			// return;
 			parentSymbolName = "";
 		} else {
@@ -69,7 +69,8 @@ public class MethodChooser extends GhidraScript {
 		TableChooserExecutor executor = createTableExecutor(currentFunction);
 
 		if (parentSymbolName != "") {
-			tableDialog = createTableChooserDialog("Rename " + parentSymbolName + "::" + currentFunctionSymbol.getName(), executor);
+			tableDialog = createTableChooserDialog(
+					"Rename " + parentSymbolName + "::" + currentFunctionSymbol.getName(), executor);
 		} else {
 			tableDialog = createTableChooserDialog("Rename " + currentFunctionSymbol.getName(), executor);
 		}
@@ -83,6 +84,22 @@ public class MethodChooser extends GhidraScript {
 		Map<String, Set<String>> classMethodMaps = ida_export.getClassMethodsMap();
 
 		Set<String> methods = classMethodMaps.get(parentSymbolName);
+		String[] namespaces = { "ZTUI", "ZTUI::animalinfo", "ZTUI::buya", "ZTUI::buyh", "ZTUI::buyobj",
+				"ZTUI::cbuildinginfo", "ZTUI::colorreplace", "ZTUI::credits", "ZTUI::developer",
+				"ZTUI::expansionselect", "ZTUI::filterinfo", "ZTUI::gameopts", "ZTUI::gamescrn", "ZTUI::general",
+				"ZTUI::guestinfo", "ZTUI::habitatinfo", "ZTUI::heliinfo", "ZTUI::help", "ZTUI::hirestaff",
+				"ZTUI::infoplaque", "ZTUI::keeperinfo", "ZTUI::main", "ZTUI::mapselect", "ZTUI::messagebox",
+				"ZTUI::multianimal", "ZTUI::multiguest", "ZTUI::multistaff", "ZTUI::ncbuildinginfo", "ZTUI::objective",
+				"ZTUI::rescon", "ZTUI::scenario", "ZTUI::showpanel", "ZTUI::staffinfo", "ZTUI::staffplaque",
+				"ZTUI::startup", "ZTUI::tankmodify", "ZTUI::terraform", "ZTUI::zooitems", "ZTUI::zoostatus" };
+		for (String namespace : namespaces) {
+			Set<String> methodsInNamespace = classMethodMaps.get(namespace);
+			if (methodsInNamespace != null) {
+				for (String methodName : methodsInNamespace) {
+					methods.add(namespace + ":" + methodName);
+				}
+			}
+		}
 		if (methods != null) {
 			for (String methodName : methods) {
 				int bracketIndex = methodName.indexOf('(');
@@ -90,7 +107,7 @@ public class MethodChooser extends GhidraScript {
 					// addMethod(tableDialog, "0x0", methodName, new String[0]);
 					tableDialog.add(new MethodForImport("0x0", methodName, new String[0]));
 					continue;
-				} 
+				}
 				// println(methodName);
 				String trimmedMethodName = methodName.substring(0, bracketIndex);
 				String params = methodName.substring(bracketIndex + 1, methodName.indexOf(')'));
@@ -99,16 +116,16 @@ public class MethodChooser extends GhidraScript {
 			}
 		}
 
-
 		// for (Map.Entry<String, ClassStatus> entry : classStatuses.entrySet()) {
-		// 	addClass(tableDialog, "0x0", entry.getKey(), entry.getValue());
+		// addClass(tableDialog, "0x0", entry.getKey(), entry.getValue());
 		// }
 	}
 
 	/**
-	 * Builds the configurable columns for the TableDialog. More columns could be added.
+	 * Builds the configurable columns for the TableDialog. More columns could be
+	 * added.
 	 * 
-	 * @param tableChooserDialog the dialog 
+	 * @param tableChooserDialog the dialog
 	 */
 	private void configureTableColumns(TableChooserDialog tableChooserDialog) {
 
@@ -179,7 +196,7 @@ public class MethodChooser extends GhidraScript {
 			public boolean execute(AddressableRowObject rowObject) {
 				MethodForImport zooMethod = (MethodForImport) rowObject;
 
-				String methodName = zooMethod.getMethodName(); 
+				String methodName = zooMethod.getMethodName();
 				Address entry = zooMethod.getAddress();
 				String paramTypes = zooMethod.getParamTypesAsString();
 
@@ -187,13 +204,14 @@ public class MethodChooser extends GhidraScript {
 
 				renameMethod(function, methodName, zooMethod.getParamTypes());
 
-				return false; 
+				return false;
 			}
 		};
 		return executor;
 	}
 
-	private void addMethod(TableChooserDialog tableChooserDialog, String address, String methodName, String[] paramTypes) {
+	private void addMethod(TableChooserDialog tableChooserDialog, String address, String methodName,
+			String[] paramTypes) {
 		tableChooserDialog.add(new MethodForImport(address, methodName, paramTypes));
 	}
 
@@ -241,7 +259,6 @@ public class MethodChooser extends GhidraScript {
 		private Map<String, String> methodAddresses = new HashMap<>();
 		private Map<String, Set<String>> classMethodsMap = new HashMap<>();
 
-
 		public void parse() {
 			String homePath = System.getProperty("user.home");
 			File importFile = new File(homePath + File.separator + "ida_export.csv");
@@ -255,7 +272,7 @@ public class MethodChooser extends GhidraScript {
 			// Set<String> uniqueClasses = new HashSet<>();
 
 			try (Scanner scanner = new Scanner(importFile)) {
-				//Skip header
+				// Skip header
 				scanner.nextLine();
 				try {
 					FileWriter methodLogFileWriter = new FileWriter(methodLogFile);
@@ -266,7 +283,8 @@ public class MethodChooser extends GhidraScript {
 
 						if (parts.length >= 3) {
 							String mangledName = parts[0].trim();
-							String methodSignature = parts[1].trim().replaceAll("\\(\\(", "\\(").replaceAll("\\)\\)", "\\)").replaceAll("\\(const\\(", "\\(");
+							String methodSignature = parts[1].trim().replaceAll("\\(\\(", "\\(")
+									.replaceAll("\\)\\)", "\\)").replaceAll("\\(const\\(", "\\(");
 							if (methodSignature.startsWith("std::") || methodSignature.startsWith("Metrowerks::")) {
 								continue;
 							}
@@ -278,7 +296,8 @@ public class MethodChooser extends GhidraScript {
 							String className = extractClassName(methodSignature);
 							// println(className);
 							classMethodsMap.computeIfAbsent(className, k -> new HashSet<>()).add(methodName);
-							methodLogFileWriter.write(mangledName + " " + className + " " + methodName + " " + methodSignature + " " + address + "\n");
+							methodLogFileWriter.write(mangledName + " " + className + " " + methodName + " "
+									+ methodSignature + " " + address + "\n");
 
 							// uniqueClasses.add(className);
 							if (className.length() != 0 && getDataTypes(className).length != 0) {
@@ -315,7 +334,7 @@ public class MethodChooser extends GhidraScript {
 				}
 				classLogFileWriter.close();
 			} catch (IOException e) {
-					e.printStackTrace();
+				e.printStackTrace();
 			}
 		}
 
@@ -337,9 +356,9 @@ public class MethodChooser extends GhidraScript {
 			}
 			int lastColonIndex = methodSignature.lastIndexOf("::", openingParenIndex);
 			if (lastColonIndex == -1) {
-			   return methodSignature;
-   			} else {
-        		return methodSignature.substring(lastColonIndex + 2);
+				return methodSignature;
+			} else {
+				return methodSignature.substring(lastColonIndex + 2);
 			}
 		}
 
@@ -353,7 +372,7 @@ public class MethodChooser extends GhidraScript {
 			if (lastColonIndex == -1) {
 				return "";
 			}
-			int num_colons = beforeBracket.split(beforeBracket, -1).length-1;
+			int num_colons = beforeBracket.split(beforeBracket, -1).length - 1;
 			if (num_colons == 0) {
 				return beforeBracket;
 			} else if (num_colons == 1) {
@@ -394,16 +413,19 @@ public class MethodChooser extends GhidraScript {
 	public void renameClass(String oldClassName, String newClassName) {
 		Namespace ooNamespace = getNamespace(null, "OOAnalyzer");
 		DataType[] classDataTypes = getDataTypes(oldClassName);
-		DataType[] vtableDataTypes = getDataTypes(oldClassName + "::vtable_" + oldClassName.replaceFirst("^cls_0x", ""));
+		DataType[] vtableDataTypes = getDataTypes(
+				oldClassName + "::vtable_" + oldClassName.replaceFirst("^cls_0x", ""));
 		List<Symbol> classSymbols = getSymbols(oldClassName, ooNamespace);
 		if (getDataTypes(newClassName).length != 0 || getSymbols(newClassName, null).size() != 0) {
 			OkDialog.showError("Error", "Class " + newClassName + " already exists");
 			return;
 		} else if (classDataTypes.length == 0 || classSymbols.size() == 0) {
-			OkDialog.showError("Error", "Class " + oldClassName + " does not exist " + classDataTypes.length + " " + classSymbols.size());
+			OkDialog.showError("Error",
+					"Class " + oldClassName + " does not exist " + classDataTypes.length + " " + classSymbols.size());
 			return;
 		} else if (classDataTypes.length != 1 || vtableDataTypes.length > 1 || classSymbols.size() != 1) {
-			OkDialog.showError("Error", "Multiple classes with name " + oldClassName + " exist " + classDataTypes.length + " " + vtableDataTypes.length + " " + classSymbols.size());
+			OkDialog.showError("Error", "Multiple classes with name " + oldClassName + " exist " + classDataTypes.length
+					+ " " + vtableDataTypes.length + " " + classSymbols.size());
 			return;
 		} else {
 			start();
@@ -426,7 +448,8 @@ public class MethodChooser extends GhidraScript {
 	}
 
 	public void renameMethod(Function oldFunction, String newFunctionName, String[] newFunctionArgs) {
-		println("Renaming method " + oldFunction.getName() + " to " + newFunctionName + " with args " + Arrays.toString(newFunctionArgs));
+		println("Renaming method " + oldFunction.getName() + " to " + newFunctionName + " with args "
+				+ Arrays.toString(newFunctionArgs));
 		int numArgs = newFunctionArgs.length;
 		if (numArgs == 1 && newFunctionArgs[0].equals("void")) {
 			numArgs = 0;
@@ -435,9 +458,10 @@ public class MethodChooser extends GhidraScript {
 		if (oldFunction.getCallingConventionName().equals("__thiscall")) {
 			numArgs++;
 			thisFlag = true;
-		} 
+		}
 		if (oldFunction.getParameterCount() != numArgs) {
-			OkDialog.showError("Error", "Function " + oldFunction.getName() + " has " + oldFunction.getParameterCount() + " arguments, but " + numArgs + " were provided");
+			OkDialog.showError("Error", "Function " + oldFunction.getName() + " has " + oldFunction.getParameterCount()
+					+ " arguments, but " + numArgs + " were provided");
 			return;
 		}
 		start();
@@ -449,8 +473,9 @@ public class MethodChooser extends GhidraScript {
 				indexOffset = 1;
 				paramDataTypes[0] = oldFunction.getParameter(0).getDataType();
 			}
-			for (int i = 0; i < numArgs-1; i++) {
-				paramDataTypes[i] = getDataTypeFromParam(oldFunction.getParameter(i + indexOffset).getDataType(), newFunctionArgs[i]);
+			for (int i = 0; i < numArgs - 1; i++) {
+				paramDataTypes[i] = getDataTypeFromParam(oldFunction.getParameter(i + indexOffset).getDataType(),
+						newFunctionArgs[i]);
 
 				if (paramDataTypes[i] == null) {
 					paramDataTypes[i] = getOrCreateDataType(newFunctionArgs[i]);
@@ -461,9 +486,11 @@ public class MethodChooser extends GhidraScript {
 					}
 				}
 				retypeFunctionArg(oldFunction, i + indexOffset, paramDataTypes[i]);
-				// oldFunction.getParameter(i).setDataType(paramDataTypes[i], SourceType.USER_DEFINED);
+				// oldFunction.getParameter(i).setDataType(paramDataTypes[i],
+				// SourceType.USER_DEFINED);
 				// paramDataTypes[i] = getDataTypes(newFunctionArgs[i])[0];
-				// oldFunction.getParameter(i).setName(newFunctionArgs[i], SourceType.USER_DEFINED);
+				// oldFunction.getParameter(i).setName(newFunctionArgs[i],
+				// SourceType.USER_DEFINED);
 			}
 		} catch (Exception e) {
 			println(e.getMessage());
@@ -473,13 +500,14 @@ public class MethodChooser extends GhidraScript {
 		end(true);
 	}
 
-	public void retypeFunctionArg(Function function, int argIndex, DataType newDataType) throws ghidra.util.exception.InvalidInputException {
+	public void retypeFunctionArg(Function function, int argIndex, DataType newDataType)
+			throws ghidra.util.exception.InvalidInputException {
 		println("Function args " + function.getParameterCount() + " " + argIndex + " " + newDataType.getName());
 		try {
 			function.getParameters()[argIndex].setDataType(newDataType, SourceType.USER_DEFINED);
 		} catch (Exception e) {
 			// if (function.hasCustomVariableStorage()) {
-			// 	throw e;
+			// throw e;
 			// }
 			println("Retyping function " + function.getName() + " to use custom variable storage");
 			function.setCustomVariableStorage(true);
@@ -503,7 +531,8 @@ public class MethodChooser extends GhidraScript {
 				dataTypes = getDataTypes(mapDataTypes(baseType));
 				if (dataTypes.length == 0) {
 					println("Creating data type ph_" + baseType);
-					StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"), "ph_" + baseType, 0);
+					StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"),
+							"ph_" + baseType, 0);
 					dataTypeManager.addDataType(structure, DataTypeConflictHandler.REPLACE_HANDLER);
 					return new PointerDataType(structure);
 				} else {
@@ -511,7 +540,8 @@ public class MethodChooser extends GhidraScript {
 				}
 			}
 			println("Creating data type ph_" + dataTypeString);
-			StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"), "ph_" + dataTypeString, 0);
+			StructureDataType structure = new StructureDataType(new CategoryPath("/OOAnalyzer"), "ph_" + dataTypeString,
+					0);
 			dataTypeManager.addDataType(structure, DataTypeConflictHandler.REPLACE_HANDLER);
 			// return createDataType(mapDataTypes(dataTypeString));
 			return structure;
@@ -535,7 +565,8 @@ public class MethodChooser extends GhidraScript {
 			if (oldDataType == dataTypes[0]) {
 				return dataTypes[0];
 			} else {
-				switch (OptionDialog.showYesNoCancelDialog(null, "Confirm", oldDataType.getName() + " will be changed to " + dataTypes[0].getName())) {
+				switch (OptionDialog.showYesNoCancelDialog(null, "Confirm",
+						oldDataType.getName() + " will be changed to " + dataTypes[0].getName())) {
 					case 0:
 						println("Cancelled");
 						return null;
