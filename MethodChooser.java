@@ -84,6 +84,9 @@ public class MethodChooser extends GhidraScript {
 		Map<String, Set<String>> classMethodMaps = ida_export.getClassMethodsMap();
 
 		Set<String> methods = classMethodMaps.get(parentSymbolName);
+		if (parentSymbolName.startsWith("ph_")) {
+			methods = classMethodMaps.get(parentSymbolName.substring(3));
+		}
 		if (parentSymbolName == "") {
 			String[] namespaces = { "ZTUI", "ZTUI::animalinfo", "ZTUI::buya", "ZTUI::buyh", "ZTUI::buyobj",
 					"ZTUI::cbuildinginfo", "ZTUI::colorreplace", "ZTUI::credits", "ZTUI::developer",
