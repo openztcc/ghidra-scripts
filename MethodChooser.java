@@ -13,7 +13,6 @@ import ghidra.app.decompiler.component.DecompilerUtils;
 import ghidra.app.script.*;
 import ghidra.app.tablechooser.*;
 import ghidra.framework.options.ToolOptions;
-import ghidra.framework.plugintool.util.OptionsService;
 import ghidra.program.model.address.Address;
 import ghidra.program.model.address.AddressSpace;
 import ghidra.program.model.lang.Register;
@@ -96,7 +95,8 @@ public class MethodChooser extends GhidraScript {
 					"ZTUI::multianimal", "ZTUI::multiguest", "ZTUI::multistaff", "ZTUI::ncbuildinginfo",
 					"ZTUI::objective",
 					"ZTUI::rescon", "ZTUI::scenario", "ZTUI::showpanel", "ZTUI::staffinfo", "ZTUI::staffplaque",
-					"ZTUI::startup", "ZTUI::tankmodify", "ZTUI::terraform", "ZTUI::zooitems", "ZTUI::zoostatus" };
+					"ZTUI::startup", "ZTUI::tankmodify", "ZTUI::terraform", "ZTUI::zooitems", "ZTUI::zoostatus",
+				    "BFConfigStringTable" };
 			for (String namespace : namespaces) {
 				Set<String> methodsInNamespace = classMethodMaps.get(namespace);
 				if (methodsInNamespace != null) {
