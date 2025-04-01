@@ -96,7 +96,7 @@ public class MethodChooser extends GhidraScript {
 					"ZTUI::objective",
 					"ZTUI::rescon", "ZTUI::scenario", "ZTUI::showpanel", "ZTUI::staffinfo", "ZTUI::staffplaque",
 					"ZTUI::startup", "ZTUI::tankmodify", "ZTUI::terraform", "ZTUI::zooitems", "ZTUI::zoostatus",
-				    "BFConfigStringTable" };
+				    "BFConfigStringTable", "bfinternat" };
 			for (String namespace : namespaces) {
 				Set<String> methodsInNamespace = classMethodMaps.get(namespace);
 				if (methodsInNamespace != null) {

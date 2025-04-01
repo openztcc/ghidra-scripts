@@ -336,7 +336,7 @@ public class ClassChooser extends GhidraScript {
 				classDataType.setName(newClassName);
 				if (vftableDataTypes.length == 1) {
 					DataType vtableDataType = vftableDataTypes[0];
-					vtableDataType.setName(newClassName + "::vftable");
+					vtableDataType.setName(newClassName + "::vtable");
 				}
 				classSymbols.get(0).setName(newClassName, SourceType.USER_DEFINED);
 			} catch (Exception e) {
