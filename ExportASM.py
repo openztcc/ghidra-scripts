@@ -207,20 +207,34 @@ def process_instruction(function, instruction, function_start_address, label_tar
 
     return formatted_instruction_result
 
+def get_assembly(function):
+    if function is None:
+        return ""
+    
+    assembly = ""
+    function_start_address = function.body.minAddress
+    label_target_addresses = get_label_target_addresses(function, function_start_address)
+
+    for instruction in currentProgram.listing.getInstructions(function.body, True):
+        assembly += process_instruction(function, instruction, function_start_address, label_target_addresses)
+    return assembly
+
 def main():
     function = get_function()
     if function is None:
         return
 
-    assembly = ""
-    function_start_address = function.body.minAddress
-    print("Functions starts at: " + str(function_start_address))
-    label_target_addresses = get_label_target_addresses(function, function_start_address)
+    asm = get_assembly(function)
 
-    for instruction in currentProgram.listing.getInstructions(function.body, True):
-        assembly += process_instruction(function, instruction, function_start_address, label_target_addresses)
+    # assembly = ""
+    # function_start_address = function.body.minAddress
+    # print("Functions starts at: " + str(function_start_address))
+    # label_target_addresses = get_label_target_addresses(function, function_start_address)
 
-    print("Assembly for function {}: \n{}".format(function.getName(), assembly))
+    # for instruction in currentProgram.listing.getInstructions(function.body, True):
+    #     assembly += process_instruction(function, instruction, function_start_address, label_target_addresses)
 
+    print("Assembly for function {}: \n{}".format(function.getName(), asm))
 
-main()
+if __name__ == "__main__":
+    main()
