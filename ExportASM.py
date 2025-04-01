@@ -4,7 +4,6 @@
 
 import re
 from ghidra.program.model.lang import OperandType, Register
-#from ghidra.program.model.address import Address
 
 try:
     from typing import TYPE_CHECKING

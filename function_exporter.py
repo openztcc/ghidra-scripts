@@ -209,7 +209,6 @@ def get_label_target_addresses(function, function_start_address):
                 label_targets[referenced_offset] = True
     return label_targets
 
-
 def format_operand(instruction, operand_index, function, function_start_address):
     """
     Format a single instruction operand according to assembly syntax rules.
@@ -230,8 +229,10 @@ def format_operand(instruction, operand_index, function, function_start_address)
     opObjects = instruction.getOpObjects(operand_index)
     opType = instruction.getOperandType(operand_index)
     fm = currentProgram.getFunctionManager()
+    sm = currentProgram.getSymbolTable()
+    address_regex = re.compile(r"(?:^|\[|\s)(0x0{0,2}?[456]\w{5})(?:$|\]|\s])")
 
-    # Handle dynamic addresses with registers (convert to use % prefix)
+    # Handle dynamic addresses with registers (convert to use $ prefix)
     if OperandType.isAddress(opType) and OperandType.isDynamic(opType):
         opText = re.sub(r"\((\w+)\)$", r"($\1)", opText)
     
@@ -245,11 +246,9 @@ def format_operand(instruction, operand_index, function, function_start_address)
     elif OperandType.isRegister(opType):
         opText = "%" + opText
     
-    # Handle scalar values that are actually registers
     elif OperandType.isScalar(opType) and isinstance(opObjects[0], Register):
         opText = "$" + opText
     
-    # Handle code references (addresses)
     # Handle code references (addresses)
     elif OperandType.isAddress(opType) and OperandType.isCodeReference(opType):
         is_in_func, addr = is_code_reference_in_function(instruction, operand_index, function)
@@ -265,7 +264,39 @@ def format_operand(instruction, operand_index, function, function_start_address)
                 opText = class_name + "::" + f.getName()
             else:
                 opText = f.getName()
+
+    elif OperandType.isAddress(opType):
+        m = address_regex.search(opText)
+        if m:
+            addr = currentProgram.parseAddress(m.group(1))
+            if addr is not None and len(addr) > 0:
+                f = fm.getReferencedFunction(addr[0])
+                if f is not None:
+                    class_name = get_class_name(f)
+                    ref = f.getName()
+                    if class_name:
+                        ref = class_name + "::" + ref
+                    opText = address_regex.sub(ref, opText)
+                else:
+                    symbol = sm.getPrimarySymbol(addr[0])
+                    if symbol is not None:
+                        opText = address_regex.sub(str(symbol), opText)
+                    else:
+                        print("Unhandled address: " + m.group(1) + " in " + opText)
+        else:
+            print("Could not find address in: " + opText)
     return opText
+
+def get_class_name(function):
+    # Symbol currentFunctionSymbol = currentFunction.getSymbol();
+	# 	Symbol parentSymbol = currentFunctionSymbol.getParentSymbol();
+	#	String parentSymbolName;
+    function_symbol = function.getSymbol()
+    parent_symbol = function_symbol.getParentSymbol()
+    parent_symbol_name = parent_symbol.getName()
+    if parent_symbol_name == "global":
+        parent_symbol_name = ""
+    return parent_symbol_name
 
 
 def process_instruction(function, instruction, function_start_address, label_target_addresses):
@@ -301,11 +332,17 @@ def process_instruction(function, instruction, function_start_address, label_tar
 
     instruction_offset = instruction.getAddress().offset - function_start_address.offset
     needs_label = label_target_addresses.get(instruction_offset, False)
+    eol_comment = instruction.getComment(0)
+    formatted_instruction_result = ""
     if needs_label:
         instruction_address = "%x" % instruction_offset
-        return ".%s: %s\n" % (instruction_address, formatted_instruction)
-    else:
-        return "%s\n" % formatted_instruction
+        formatted_instruction_result += ".%s: " % instruction_address
+    formatted_instruction_result += "%s" % formatted_instruction
+    if eol_comment:
+        formatted_instruction_result += "\t\t ; " + eol_comment
+    formatted_instruction_result += "\n"
+
+    return formatted_instruction_result
 
 def get_assembly(function):
     if function is None:
