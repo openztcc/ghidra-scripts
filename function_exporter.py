@@ -177,6 +177,3 @@ def get_c_code(function, decomp_interface):
 
 if __name__ == "__main__":
     get_functions()
-
-
-#Google AI Playground API Key AIzaSyAZLl7iSPxhDhprBJHbKJu9LcWHHVfjEiU
