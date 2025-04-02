@@ -11,7 +11,7 @@ from ghidra.program.model.lang import OperandType, Register
 from ghidra.app.decompiler import DecompInterface
 from ghidra.util.task import ConsoleTaskMonitor
 
-from ExportASM import get_assembly
+from ExportASM import get_assembly, GhidraContext
 
 try:
     from typing import TYPE_CHECKING
@@ -34,11 +34,11 @@ def is_identified(function_name):
         and not function_name.startswith("dtor_0x")
 
 def get_functions():
+    ctx = GhidraContext(currentProgram, currentLocation, currentProgram.getFunctionManager(), currentProgram.getSymbolTable())
     decomp_interface = DecompInterface()
     decomp_interface.openProgram(currentProgram)
 
-    fm = currentProgram.getFunctionManager()
-    functions = fm.getFunctionsNoStubs(True)
+    functions = ctx.function_manager.getFunctionsNoStubs(True)
 
     pure_functions = 0
     identified_pure_functions = 0
@@ -89,7 +89,7 @@ def get_functions():
                 if valid_file_name(file_base) and not excluded_function(function):
                     print("Writing out function: " + function_class_name + " " + function_name)
                     with open(file_base + ".asm", "w") as f:
-                        f.write(get_assembly(function))
+                        f.write(get_assembly(ctx, function))
                     with open(file_base + ".c", "w") as f:
                         f.write(get_c_code(function, decomp_interface))
                 else:
