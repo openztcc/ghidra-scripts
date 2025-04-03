@@ -92,6 +92,9 @@ def get_functions():
                         f.write(get_assembly(ctx, function))
                     with open(file_base + ".c", "w") as f:
                         f.write(get_c_code(function, decomp_interface))
+                    if len(called):
+                        with open(file_base + ".meta", "w") as f:
+                            f.write("/n".join(get_func_sigs(called)))
                 else:
                     print("### Skipping function: " + function_class_name + " " + function_name)
             # In future we should be iterating through classes
@@ -144,6 +147,12 @@ def get_functions():
     print("Found %d fully defined functions" % fully_defined)
     print("Found %d unidentified fully defined functions" % unidentified_fully_defined)
     print("Found %d unidentified fully defined functions with at least one call" % unidentified_fully_defined_at_least_one_call)
+
+def get_func_sigs(functions):
+    sigs = []
+    for f in functions:
+        sigs.append(f.getPrototypeString(False, True))
+    return sigs
 
 def excluded_function(function):
     return str(function.body.minAddress) in ["005349b0"]
