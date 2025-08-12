@@ -23,26 +23,14 @@ def is_identified(function_name):
         and not function_name.startswith("entry") \
         and not function_name.startswith("thunk_FUN_")
 
-def get_class_from_name(function_name):
-    """Extract class name from function name if it exists"""
-    # Handle C++ method names like ClassName::MethodName
-    if "::" in function_name:
-        return function_name.split("::")[0]
-    
-    # Handle names like CLASSNAME_METHOD or ClassNameMethod patterns
-    # Look for common class prefixes in Zoo Tycoon
-    common_prefixes = ["BF", "ZT", "UI", "BG", "BH"]
-    
-    for prefix in common_prefixes:
-        if function_name.startswith(prefix):
-            # Try to find where the class name ends
-            # Usually it's CamelCase followed by underscore or another capital
-            match = re.match(r'^([A-Z][A-Za-z0-9]+?)(?:_|(?=[A-Z][a-z]))', function_name)
-            if match:
-                return match.group(1)
-    
-    # If no class found, return None for standalone functions
-    return None
+def get_class_name(function):
+    """Get the class name from the function's symbol hierarchy"""
+    function_symbol = function.getSymbol()
+    parent_symbol = function_symbol.getParentSymbol()
+    parent_symbol_name = parent_symbol.getName()
+    if parent_symbol_name == "global":
+        parent_symbol_name = ""
+    return parent_symbol_name
 
 def get_calling_convention(function):
     """Determine the calling convention from function signature"""
@@ -131,17 +119,51 @@ def get_function_signature_rust(function):
         params_str = "(" + ", ".join(param_types) + ")"
     
     if rust_return == "()":
-        fn_type = f"unsafe extern \"{calling_conv}\" fn{params_str}"
+        fn_type = "unsafe extern \"{}\" fn{}".format(calling_conv, params_str)
     else:
-        fn_type = f"unsafe extern \"{calling_conv}\" fn{params_str} -> {rust_return}"
+        fn_type = "unsafe extern \"{}\" fn{} -> {}".format(calling_conv, params_str, rust_return)
     
     return fn_type
 
-def sanitize_rust_name(name):
+def sanitize_class_name(class_name):
+    """Sanitize class name for use as a Rust module name"""
+    # Remove angle brackets and other invalid characters
+    class_name = class_name.replace("<", "").replace(">", "")
+    
+    # Convert to lowercase and replace non-alphanumeric with underscores
+    result = ""
+    for char in class_name:
+        if char.isalnum():
+            result += char.lower()
+        else:
+            result += "_"
+    
+    # Remove duplicate underscores
+    while "__" in result:
+        result = result.replace("__", "_")
+    result = result.strip("_")
+    
+    # If it starts with a number, prepend "class_"
+    if result and result[0].isdigit():
+        result = "class_" + result
+    
+    return result if result else "unnamed"
+
+def sanitize_rust_name(name, class_name=""):
     """Convert function name to valid Rust constant name"""
-    # Remove class prefix if it exists
+    # Remove angle brackets (template parameters)
+    name = name.replace("<", "").replace(">", "")
+    
+    # Remove class prefix if it exists in the function name
     if "::" in name:
         name = name.split("::")[-1]
+    
+    # If the function name starts with the class name, remove it
+    if class_name and name.upper().startswith(class_name.upper()):
+        # Remove the class prefix and any following underscore
+        name = name[len(class_name):]
+        if name.startswith("_"):
+            name = name[1:]
     
     # Convert to uppercase with underscores
     result = ""
@@ -154,6 +176,10 @@ def sanitize_rust_name(name):
     while "__" in result:
         result = result.replace("__", "_")
     result = result.strip("_")
+    
+    # If result is empty or starts with a number, prepend "FN_"
+    if not result or result[0].isdigit():
+        result = "FN_" + result
     
     return result
 
@@ -180,10 +206,10 @@ def main():
             
         identified_count += 1
         
-        # Get class name
-        class_name = get_class_from_name(name)
+        # Get class name from symbol hierarchy
+        class_name = get_class_name(function)
         
-        if class_name:
+        if class_name and class_name != "":
             class_functions[class_name].append(function)
         else:
             standalone_functions.append(function)
@@ -206,17 +232,21 @@ def main():
     
     # Generate class-organized functions
     for class_name in sorted(class_functions.keys()):
+        sanitized_module_name = sanitize_class_name(class_name)
         rust_code.append("// {} class functions".format(class_name))
-        rust_code.append("pub mod {} {{".format(class_name.lower()))
+        rust_code.append("pub mod {} {{".format(sanitized_module_name))
         rust_code.append("    use super::*;")
         rust_code.append("")
         
         for function in sorted(class_functions[class_name], key=lambda f: f.getEntryPoint().getOffset()):
             fn_name = function.getName()
-            rust_const_name = sanitize_rust_name(fn_name)
+            rust_const_name = sanitize_rust_name(fn_name, class_name)
             
-            # Prepend class name to avoid conflicts
-            full_const_name = "{}_{}".format(class_name.upper(), rust_const_name)
+            # Don't prepend class name if the constant name already is unique enough
+            if rust_const_name:
+                full_const_name = rust_const_name
+            else:
+                full_const_name = "{}_METHOD".format(class_name.upper())
             
             try:
                 fn_signature = get_function_signature_rust(function)
