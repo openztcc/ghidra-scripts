@@ -181,6 +181,8 @@ def sanitize_class_name(class_name):
 
 def sanitize_rust_name(name, class_name=""):
     """Convert function name to valid Rust constant name"""
+    original_name = name
+    
     # Remove angle brackets (template parameters)
     name = name.replace("<", "").replace(">", "")
     
@@ -188,27 +190,42 @@ def sanitize_rust_name(name, class_name=""):
     if "::" in name:
         name = name.split("::")[-1]
     
-    # If the function name starts with the class name, remove it
-    if class_name and name.upper().startswith(class_name.upper()):
-        # Remove the class prefix and any following underscore
-        name = name[len(class_name):]
-        if name.startswith("_"):
-            name = name[1:]
+    # Handle constructor case - if the name matches the class name exactly
+    is_constructor = False
+    if class_name and name.upper() == class_name.upper().replace("::", "_"):
+        is_constructor = True
+        result = "CONSTRUCTOR"
+    else:
+        # If the function name starts with the class name, remove it
+        if class_name and name.upper().startswith(class_name.upper()):
+            # Remove the class prefix and any following underscore
+            name = name[len(class_name):]
+            if name.startswith("_"):
+                name = name[1:]
+        
+        # Convert to uppercase with underscores
+        result = ""
+        for i, char in enumerate(name):
+            if i > 0 and char.isupper() and name[i-1].islower():
+                result += "_"
+            result += char.upper() if char.isalnum() else "_"
+        
+        # Remove duplicate underscores and trailing underscores
+        while "__" in result:
+            result = result.replace("__", "_")
+        result = result.strip("_")
     
-    # Convert to uppercase with underscores
-    result = ""
-    for i, char in enumerate(name):
-        if i > 0 and char.isupper() and name[i-1].islower():
-            result += "_"
-        result += char.upper() if char.isalnum() else "_"
+    # Handle special cases for empty results
+    if not result:
+        if is_constructor:
+            result = "CONSTRUCTOR"
+        elif "destructor" in original_name.lower() or original_name.startswith("~"):
+            result = "DESTRUCTOR"
+        else:
+            result = "UNKNOWN_METHOD"
     
-    # Remove duplicate underscores and trailing underscores
-    while "__" in result:
-        result = result.replace("__", "_")
-    result = result.strip("_")
-    
-    # If result is empty or starts with a number, prepend "FN_"
-    if not result or result[0].isdigit():
+    # If result starts with a number, prepend "FN_"
+    if result and result[0].isdigit():
         result = "FN_" + result
     
     return result
@@ -259,10 +276,7 @@ def main():
     rust_code.append("")
     rust_code.append("use std::marker::PhantomData;")
     rust_code.append("")
-    rust_code.append("pub struct FunctionDef<T> {")
-    rust_code.append("    pub address: usize,")
-    rust_code.append("    pub function_type: PhantomData<T>,")
-    rust_code.append("}")
+    rust_code.append("use crate::FunctionDef;")
     rust_code.append("")
     
     # Generate class-organized functions
