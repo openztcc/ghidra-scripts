@@ -13,23 +13,50 @@ except ImportError:
 if TYPE_CHECKING:
     from ghidra.ghidra_builtins import *
 
+
 def is_identified(function_name):
     """Check if a function has been properly identified (not a default Ghidra name)"""
     return not function_name.startswith("FUN_00") \
+        and not function_name.startswith("fun_00") \
         and not function_name.startswith("meth_0x") \
         and not function_name.startswith("virt_") \
         and not function_name.startswith("_") \
         and not function_name.startswith("cls_0x") \
         and not function_name.startswith("entry") \
+        and not function_name.startswith("~cls_0") \
+        and not function_name.startswith("ctor") \
+        and not function_name.startswith("switchD") \
+        and not function_name.startswith("switchd") \
+        and not function_name.startswith("lpLocaleEnumProc") \
+        and not function_name.startswith("dtor_0x") \
         and not function_name.startswith("thunk_FUN_")
 
 def get_class_name(function):
-    """Get the class name from the function's symbol hierarchy"""
+    """Get the class name from the function's symbol hierarchy, including namespace"""
     function_symbol = function.getSymbol()
     parent_symbol = function_symbol.getParentSymbol()
     parent_symbol_name = parent_symbol.getName()
+    
+    # Return None to indicate this function should be excluded
+    if parent_symbol_name and parent_symbol_name.startswith("switchD"):
+        return None
+    
+    # Check if we should look one level up for namespace
+    if parent_symbol_name and parent_symbol_name != "global":
+        grandparent_symbol = parent_symbol.getParentSymbol()
+        if grandparent_symbol:
+            grandparent_name = grandparent_symbol.getName()
+            # Only prepend if it's not one of the excluded names
+            if grandparent_name and grandparent_name not in ["global", "OOAnalyzer"]:
+                # Also exclude if grandparent starts with 'switchD'
+                if grandparent_name.startswith("switchD"):
+                    return None
+                # Combine namespace::class
+                parent_symbol_name = "{}::{}".format(grandparent_name, parent_symbol_name)
+    
     if parent_symbol_name == "global":
         parent_symbol_name = ""
+    
     return parent_symbol_name
 
 def get_calling_convention(function):
@@ -130,6 +157,9 @@ def sanitize_class_name(class_name):
     # Remove angle brackets and other invalid characters
     class_name = class_name.replace("<", "").replace(">", "")
     
+    # Handle namespace::class format by replacing :: with _
+    class_name = class_name.replace("::", "_")
+    
     # Convert to lowercase and replace non-alphanumeric with underscores
     result = ""
     for char in class_name:
@@ -209,6 +239,11 @@ def main():
         # Get class name from symbol hierarchy
         class_name = get_class_name(function)
         
+        # Skip functions in excluded classes (returns None)
+        if class_name is None:
+            identified_count -= 1  # Don't count excluded functions
+            continue
+        
         if class_name and class_name != "":
             class_functions[class_name].append(function)
         else:
@@ -238,15 +273,44 @@ def main():
         rust_code.append("    use super::*;")
         rust_code.append("")
         
-        for function in sorted(class_functions[class_name], key=lambda f: f.getEntryPoint().getOffset()):
+        # Sort functions by address for deterministic ordering
+        sorted_functions = sorted(class_functions[class_name], key=lambda f: f.getEntryPoint().getOffset())
+        
+        # Track name counts for handling duplicates
+        name_counts = {}
+        name_indices = {}
+        
+        # First pass: count occurrences of each name
+        for function in sorted_functions:
             fn_name = function.getName()
             rust_const_name = sanitize_rust_name(fn_name, class_name)
             
-            # Don't prepend class name if the constant name already is unique enough
             if rust_const_name:
                 full_const_name = rust_const_name
             else:
                 full_const_name = "{}_METHOD".format(class_name.upper())
+            
+            if full_const_name not in name_counts:
+                name_counts[full_const_name] = 0
+                name_indices[full_const_name] = 0
+            name_counts[full_const_name] += 1
+        
+        # Second pass: generate code with numbered duplicates
+        for function in sorted_functions:
+            fn_name = function.getName()
+            rust_const_name = sanitize_rust_name(fn_name, class_name)
+            
+            if rust_const_name:
+                base_const_name = rust_const_name
+            else:
+                base_const_name = "{}_METHOD".format(class_name.upper())
+            
+            # Add number suffix if there are duplicates
+            if name_counts[base_const_name] > 1:
+                full_const_name = "{}_{}".format(base_const_name, name_indices[base_const_name])
+                name_indices[base_const_name] += 1
+            else:
+                full_const_name = base_const_name
             
             try:
                 fn_signature = get_function_signature_rust(function)
@@ -268,16 +332,41 @@ def main():
         rust_code.append("    use super::*;")
         rust_code.append("")
         
-        for function in sorted(standalone_functions, key=lambda f: f.getEntryPoint().getOffset()):
+        # Sort functions by address for deterministic ordering
+        sorted_functions = sorted(standalone_functions, key=lambda f: f.getEntryPoint().getOffset())
+        
+        # Track name counts for handling duplicates
+        name_counts = {}
+        name_indices = {}
+        
+        # First pass: count occurrences of each name
+        for function in sorted_functions:
             fn_name = function.getName()
             rust_const_name = sanitize_rust_name(fn_name)
+            
+            if rust_const_name not in name_counts:
+                name_counts[rust_const_name] = 0
+                name_indices[rust_const_name] = 0
+            name_counts[rust_const_name] += 1
+        
+        # Second pass: generate code with numbered duplicates
+        for function in sorted_functions:
+            fn_name = function.getName()
+            base_const_name = sanitize_rust_name(fn_name)
+            
+            # Add number suffix if there are duplicates
+            if name_counts[base_const_name] > 1:
+                full_const_name = "{}_{}".format(base_const_name, name_indices[base_const_name])
+                name_indices[base_const_name] += 1
+            else:
+                full_const_name = base_const_name
             
             try:
                 fn_signature = get_function_signature_rust(function)
                 address = function.getEntryPoint().getOffset()
                 
                 rust_code.append("    pub const {}: FunctionDef<{}> = FunctionDef{{address: {:#010x}, function_type: PhantomData}};".format(
-                    rust_const_name, fn_signature, address))
+                    full_const_name, fn_signature, address))
             except Exception as e:
                 print("Warning: Could not process function {}: {}".format(fn_name, str(e)))
                 continue
