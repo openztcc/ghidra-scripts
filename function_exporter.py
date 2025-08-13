@@ -94,7 +94,7 @@ def get_functions():
                         f.write(get_c_code(function, decomp_interface))
                     if len(called):
                         with open(file_base + ".meta", "w") as f:
-                            f.write("/n".join(get_func_sigs(called)))
+                            f.write("\n".join(get_func_sigs(called)))
                 else:
                     print("### Skipping function: " + function_class_name + " " + function_name)
             # In future we should be iterating through classes
