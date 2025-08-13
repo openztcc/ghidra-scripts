@@ -78,7 +78,7 @@ def get_calling_convention(function):
 
 def map_type_to_rust(ghidra_type):
     """Map Ghidra types to Rust types"""
-    type_str = str(ghidra_type)
+    type_str = str(ghidra_type).lower()
     
     # Basic type mappings
     type_map = {
@@ -112,7 +112,7 @@ def map_type_to_rust(ghidra_type):
     
     # Check for known types
     for ghidra, rust in type_map.items():
-        if ghidra in type_str.lower():
+        if ghidra in type_str:
             return rust
     
     # Default to u32 for unknown types
@@ -137,7 +137,10 @@ def get_function_signature_rust(function):
         pass
     
     # Map return type
-    rust_return = map_type_to_rust(return_type)
+    if str(return_type) == "undefined":
+        rust_return = "()"
+    else:
+        rust_return = map_type_to_rust(return_type)
     
     # Build the function type string
     if len(param_types) == 0:
